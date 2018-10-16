@@ -1,3 +1,11 @@
+#!/usr/bin/env python2
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 16 18:22:41 2018
+
+@author: K1895936
+"""
+
 import collections
 coordinates = [(i,j) for i in range(20) for j in range(10)]
 coordinates = sorted(coordinates)
@@ -64,14 +72,17 @@ def bfs(start,goal):
                 meta[child]=(subtree_root,action)
                 queue.append(child)
                 
-        visited.append(subtree_root)
+        visited.add(subtree_root)
         
 
-def construct_path(node,metadata):
+def construct_path(node,meta):
     action_list = []
     while (meta[node][0] != None):
         node,action = meta[node]
         action_list.append(action)
         
     action_list.reverse()
-    return action_list
+    #return action_list
+    print(action_list)
+
+bfs((9,1),(13,2))
