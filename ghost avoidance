@@ -1,0 +1,51 @@
+       #if ghost_location:
+            #legal = api.legalActions(state)
+            
+            
+            #for ghost in ghost_location:
+                #dist_to_ghost= util.manhattanDistance(my_location,ghost)
+                #print("manhattan distance:", dist_to_ghost)
+                #print("Ghost coordinates:", ghost)
+                #if dist_to_ghost <=3 :
+                    #pathlist_to_ghost = self.bfs(my_location,ghost,wall_location)
+                    #print("pathlist to ghost", pathlist_to_ghost)
+                    #if pathlist_to_ghost:
+                        
+                        #banned = pathlist_to_ghost[1]
+                        
+                        #if banned[0] > my_location[0]:
+                            #legal.remove("East")
+                            
+                            #if "West" in legal: 
+                                #return api.makeMove(Directions.WEST,legal)
+                            #else:
+                                #return api.makeMove(random.choice(legal),legal)
+                                
+                        #elif banned[0] < my_location[0]:
+                            #legal.remove("West")
+                            
+                            #if "East" in legal:
+                                #return api.makeMove(Directions.EAST,legal)
+                            #else:
+                                #return api.makeMove(random.choice(legal),legal)
+                                
+                        #elif banned[1] > my_location[1]:
+                            #legal.remove("North")
+                            
+                            #if "South" in legal:
+                                #return api.makeMove(Directions.SOUTH,legal)
+                            #else:
+                                #return api.makeMove(random.choice(legal),legal)
+                        #elif banned[1] < my_location[1]:
+                            #legal.remove("South")
+                            
+                            #if "North" in legal:
+                                #return api.makeMove(Directions.NORTH,legal)
+                            #else:
+                                #return api.makeMove(random.choice(legal),legal)
+                                
+                        #else:
+                        	
+                        	# legal.append("Stop")
+                            #return api.makeMove(Directions.STOP,legal)
+                       
