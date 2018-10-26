@@ -1,0 +1,586 @@
+# sampleAgents.py
+# parsons/07-oct-2017
+#
+# Version 1.1
+#
+# Some simple agents to work with the PacMan AI projects from:
+#
+# http://ai.berkeley.edu/
+#
+# These use a simple API that allow us to control Pacman's interaction with
+# the environment adding a layer on top of the AI Berkeley code.
+#
+# As required by the licensing agreement for the PacMan AI we have:
+#
+# Licensing Information:  You are free to use or extend these projects for
+# educational purposes provided that (1) you do not distribute or publish
+# solutions, (2) you retain this notice, and (3) you provide clear
+# attribution to UC Berkeley, including a link to http://ai.berkeley.edu.
+# 
+# Attribution Information: The Pacman AI projects were developed at UC Berkeley.
+# The core projects and autograders were primarily created by John DeNero
+# (denero@cs.berkeley.edu) and Dan Klein (klein@cs.berkeley.edu).
+# Student side autograding was added by Brad Miller, Nick Hay, and
+# Pieter Abbeel (pabbeel@cs.berkeley.edu).
+
+# The agents here are extensions written by Simon Parsons, based on the code in
+# pacmanAgents.py
+
+from pacman import Directions
+from game import Agent
+import api
+import random
+import game
+import util
+import collections
+
+class PartialAgent(Agent):
+    def __init__(self):
+    	""" Self.flag acts as a persistent flag which is used to index the corner list returned by the corner API call 
+    	while the self.flag value =0 Pac-man will visit the bottom left corner. This value is incremented by the mapRoute function
+    	with each value of self. flag corresponding to a different corner"""
+    		
+    	  #self.flag acts as a counter for the pac-man strategies controlling corner seeking and food seeking    		
+        self.flag = 0
+        
+        # persistent food list that pacman sees as he travels the grid
+        self.food_list = list()
+        
+        # persistent list which records pacmans footsetps
+        self.pacman_steps = list()
+        
+        #final function resets the variables outlined in the __init__ function
+    def final(self,state):
+        self.flag = 0
+        self.food_list = list()
+        self.pacman_steps = list()
+        
+        #getAction function calls the current state of the game and runs repetitively  until the game is ended 
+        
+    def getAction(self, state):
+    	  #calls the legal Actions api which returns a list of legal moves from Pac-man agents current location	
+        legal = api.legalActions(state)
+        
+        #removes direction STOP from legal actions is later appended back into legal in certain conditions
+        if Directions.STOP in legal:
+            legal.remove(Directions.STOP)
+         
+        #corners API returns a list of the four corners in each maze    
+        corners = api.corners(state)
+        
+        #calls the API which returns wall locations 
+        wall_location = api.walls(state)
+        
+        #API call returns Pac-man agent's current location
+        my_location = api.whereAmI(state)
+        
+        #API call returns food location
+        food_location = api.food(state)
+        
+        #API call returns ghost locations 
+        ghost_location = api.ghosts(state)
+        
+        
+        
+		  #global enables all the variables to be accessed AND altered within functions	
+        global flag
+        global food_list
+        global pacman_steps
+        global counter
+        global goal
+        global remaining_food
+        
+        #if ghosts are visible within Pac-mans vision
+        if ghost_location:
+            
+            
+            #loop through the list of visible ghosts
+            for ghost in ghost_location:
+					 
+					 #calculate distance to ghosts 	            	
+                dist_to_ghost= util.manhattanDistance(my_location,ghost)
+                
+                print("manhattan distance:", dist_to_ghost)
+                print("Ghost coordinates:", ghost)
+                
+                #if the distance to the ghosts is less than or equal to 2 engage in the following conditional 
+                if dist_to_ghost <=2 :
+                	
+                    
+                    
+                    #calls the bfs function which returns a pathlist to the goal which in this case is the ghost location
+                    pathlist_to_ghost = self.bfs(my_location,ghost,wall_location)
+                    
+                    
+                    
+                    if pathlist_to_ghost:
+                        
+                        """ The banned variable takes the value of the 2nd element in the pathlist to the ghosts location 
+                        the banned list coordinates are then used to avoid the ghost with the pacman agent moving directly opposite
+                        to the banned coordinates i.e moving WEST if banned x-coordinate is to the EAST. Ensuring pacman avoids moves away from ghosts"""
+                        
+                        banned = pathlist_to_ghost[1]
+                        
+                        #if banned x-coordinate is greater than pac-man current location x then move to the west and remove east from legal moves
+                        if banned[0] > my_location[0]:
+                        	
+                            if "East" in legal and len(legal)>1:
+                            	
+                                legal.remove(Directions.EAST)
+                                
+                            if Directions.WEST in legal: 
+                            
+                                return api.makeMove(Directions.WEST,legal)
+                                
+                        #if the opposite direction is not in legal then return a random move
+                            else:
+                            	
+                                return api.makeMove(random.choice(legal),legal)
+                                
+                        #if the banned x-coordinate is less than pac-man current then move to east and remove west from legal    
+                        elif banned[0] < my_location[0]:
+                        	
+                            if "West" in legal and len(legal)>1:
+                            	
+                                legal.remove(Directions.WEST)
+                                
+                            if Directions.EAST in legal:
+                            	
+                                return api.makeMove(Directions.EAST,legal)
+                                
+                            else:
+                        #else return a random move that is legal    	
+                                return api.makeMove(random.choice(legal),legal)
+                        
+                        #if the y coordinate is greater then remove north from legal actions and move south else engage a random direction     
+                        elif banned[1] > my_location[1]:
+                        	
+                            if "North" in legal and len(legal)>1:
+                            	
+                                legal.remove(Directions.NORTH)
+                                
+                            if Directions.SOUTH in legal:
+                            	
+                                return api.makeMove(Directions.SOUTH,legal)
+                                
+                            else:
+                            	
+                                return api.makeMove(random.choice(legal),legal)
+                                
+                        #if ghost y coordinate is less than current location y then remove south direction and move north if possible else move randomly     
+                        elif banned[1] < my_location[1]:#
+
+                            if "South" in legal and len(legal)>1:
+                            	
+                                legal.remove(Directions.SOUTH)
+                                
+                            if Directions.NORTH in legal:
+                            	
+                                return api.makeMove(Directions.NORTH,legal)
+                                
+                            else:
+                                return api.makeMove(random.choice(legal),legal)
+                                
+                        #if all directions are removed from legal then append directions stop back to legal and do not move        
+                        else:
+                        	
+                            legal.append(Directions.STOP)
+                            return api.makeMove(Directions.STOP(legal),legal)
+                       
+                       
+        """ for each state run for all food that is visible if the food is not already appended to the food list append the food object coordinates """                
+        for food in food_location:
+                    # print(food)
+                    if food not in self.food_list:
+                        self.food_list.append(food)                    
+                                
+    	""" while self.flag is 0 engage in the following behaviour"""
+    	
+        if self.flag == 0:
+            
+            print("Flag is 0")
+            print("corner 0 is ", corners[0])
+            
+				#x and y co-ordinates of the corner situated at the bottom left of the maze
+            x, y = corners[0]
+            #make the corners into traversable coordinates 
+            x = x + 1
+            #make the corner into traversable coordinates
+            y = y + 1
+            #assign goal variable the transformed co-ordinates
+            goal = (x, y)
+            
+            #check the corner is not a wall location 
+            if goal not in wall_location:
+            	
+            	#return a path to the corner 
+                pathlist = self.bfs(my_location, goal, wall_location)
+                
+                #returns a Direction for eacg step in the path returned by the mapRoute function such i.e Directions.NORTH
+                direc = self.mapRoute(my_location, pathlist, legal, self.flag)
+						
+						
+					 #returns the food currently visible to Pacman		
+                print("Food visible:", food_location)
+            
+					#appends the locations pacman agent has traversed to a persistent list which was defined in the init method
+                self.pacman_steps.append(my_location)
+
+                #API call which makes pacman agent move
+                return api.makeMove(direc, legal)
+                
+            #if the corner is not traversable go to the next corner    
+            else:
+                self.flag = 1
+
+        if self.flag == 1:
+
+            #third corner in list return by API
+            x, y = corners[2]
+            
+            # transform corner into traversable co-ordinates
+            x = x + 1
+            #transform corner into traversable co-ordinates
+            y = y - 1
+            
+            #assigns newly transformed x and y to goal variable
+            goal = (x, y)
+            
+            #if corner location is not in wall, hence traversable 
+            if goal not in wall_location:
+            	#returns a path of coordinates to the corner
+                pathlist = self.bfs(my_location, goal, wall_location)
+                
+                #returns a Direction for each step 
+                direc = self.mapRoute(my_location, pathlist, legal, self.flag)
+                
+                # updates the food_list a persistent list of food that pacman see's on his travels
+                print("Food visible:", food_location)
+                
+                #see above
+                self.pacman_steps.append(my_location)
+
+               #see above
+                return api.makeMove(direc, legal)
+
+            else:
+                self.flag = 2
+
+        if self.flag == 2:
+            
+				#fourth corner returned by api list, top right corner
+            x, y = corners[3]
+            
+            #transforms corner into traversable co-ordinates
+            x = x - 1
+            
+            y = y - 1
+            
+            #see above
+            goal = (x, y)
+            
+            
+            #see above
+            if goal not in wall_location:
+            	 
+            	 #returns a pathlist to the 3rd corner	
+                pathlist = self.bfs(my_location, goal, wall_location)
+                
+                #returns a direction for pacman to take
+                direc = self.mapRoute(my_location, pathlist, legal, self.flag)
+
+                #see above
+                self.pacman_steps.append(my_location)
+
+                
+                return api.makeMove(direc, legal)
+                
+            else:
+            	
+                self.flag = 3
+
+        if self.flag == 3:
+            
+				#final corner bottom right 
+            x, y = corners[1]
+            
+            #transforms x and y coordinate so they are traversable 
+            x = x - 1
+            
+            y = y + 1
+            
+            goal = (x, y)
+            
+            if goal not in wall_location:
+                
+                #returns a path of coordinates
+                pathlist = self.bfs(my_location, goal, wall_location)
+                
+                # returns the direction for the next step in path returned by bfs call above
+                direc = self.mapRoute(my_location, pathlist, legal, self.flag)
+						
+						
+                print("Food visible:", food_location)
+                
+			
+                self.pacman_steps.append(my_location)
+
+                
+                #returns a list of the remaining food by subtracting all the food seen from the food pac-man agent has eaten
+                remaining_food = list(set(self.food_list) - set(self.pacman_steps))
+
+                
+
+
+                return api.makeMove(direc, legal)
+                
+            else:
+                self.flag = 4
+                
+
+        #loop through these commands how ever many times it requires to end the remaining food list
+        while self.flag >=4 :
+            
+           #returns the remaining food visible
+            print("Ordered Food Remaining : ", remaining_food)
+            
+            #food pacman has eaten/ path he has traversed
+            self.pacman_steps.append(my_location)
+            
+           
+       		#remaining food
+            remaining_food = list(set(self.food_list) - set(self.pacman_steps))
+
+				#new list which will hold the food coordinates and the distance from pacmans location
+            remaining_food_with_distances = []
+            
+            #loop through the remaining food objects in remaining food list
+            for i in remaining_food:
+            	
+            	""" the following code line is important,it appends a tuple of the coordinate of a food object
+            	along with its manhattan distance calculated from pacmans current location it is the constant execution of this line
+            	on each state call which enables pacman to intelligently eat the closest food object"""
+            	
+                remaining_food_with_distances.append((i, util.manhattanDistance(my_location,i)))
+            
+            #placeholder used in next for loop    
+            min = 1000
+            
+            #loop through the list with food coordinates and distances
+            for i in range(len(remaining_food_with_distances)):
+            	
+            	#assign the closest food to the variable min 
+                if remaining_food_with_distances[i][1] < min:
+                	
+                    min = remaining_food_with_distances[i][1]
+                    
+                    #assign goal variable to the food coordinate with the smallest distance from pacmans location 
+                    goal = remaining_food_with_distances[i][0]
+            
+            
+				#returns a  path of coordinates which leads to the neares food 
+            pathlist_f = self.bfs(my_location, goal, wall_location)
+            
+
+            #for each co-ordinate returned by pathlist_f returns the first step in path to food location
+            direc = self.mapRoute(my_location, pathlist_f, legal, self.flag)
+            
+            
+                
+            #passes direction call to the food to the make move api
+            return api.makeMove(direc, legal)
+
+
+
+	"""The mapRoute function is called numerous times throughout the programme and is integral to the logic which determines Pacman's movemment. 
+	It takes the current location of pacman in the current_location argument, the next_location argument takes the path returned by a bfs function call.
+	it takes the legal list and the self.flag as arguments. It returns the Direction command needed for the api.makeMove call each state call taking the agent to the goal """
+	
+	
+    def mapRoute(self, current_location, next_location, legal, flag):
+        #returns a direction command each state run which takes Pac-man from his current location to the goal
+        
+        #the path list in the next_location parameter includes the current location of pacman and so is removed from the list
+        next_location.pop(0)
+        
+        #length of path to goal
+        len_of_list = len(next_location)
+        
+        #loop through the list provided the length is greater than 1
+        for i in range(len_of_list):
+
+            # loop runs until the pathlist is empty
+            if len_of_list > 1:
+            	
+            	
+					               
+               """takes the first step in the path and subtracts it from pacmans current location uses the returned tuple to determine action.
+               if the tuple is (1,0) go EAST. (-1,0) go WEST. (0,1) go NORTH. (0,-1) go SOUTH
+               """
+               if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (1, 0):
+               	             	
+                    #if EAST in legal
+                  if Directions.EAST in legal:
+                  	                  	
+                     return Directions.EAST
+                        
+               if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (-1, 0):
+               	                   
+                  #if WEST in legal
+                  if Directions.WEST in legal:
+                  	                   	
+                     return Directions.WEST
+                        
+               if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (0, 1):
+               	                  
+                  #if NORTH in legal
+                  if Directions.NORTH in legal:
+                  	                  	
+                     return Directions.NORTH
+                        
+               if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (0, -1):
+               	               	
+                    #if SOUTH in legal
+                  if Directions.SOUTH in legal:
+                  	
+                  	return Directions.SOUTH
+                    
+ 				 				
+            if len_of_list == 1:
+               
+                self.flag = self.flag + 1
+
+                if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (1, 0):
+                    
+                    if Directions.EAST in legal:
+                    	
+                        return Directions.EAST
+                        
+                if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (-1, 0):
+                    
+                    if Directions.WEST in legal:
+                    	
+                        return Directions.WEST
+                        
+                if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (0, 1):
+                    
+                    if Directions.NORTH in legal:
+                    	
+                        return Directions.NORTH
+                        
+                if ((next_location[0][0] - current_location[0]), (next_location[0][1] - current_location[1])) == (0, -1):
+                    
+                    if Directions.SOUTH in legal:
+                    	
+                        return Directions.SOUTH
+
+    
+    def bfs(self, start, goal, wall_location):
+    	""" constructs a path containing all the nodes/coordinates using the bfs algorithm from pacmans current location (start argument) to the goal location
+    	takes the wall location as an argument also"""
+    	
+    	
+			#creates empty deque object	
+        queue = collections.deque()
+        
+        #creates a visited set which will contain all the explored nodes
+        visited = set()
+        #creates a dictionary which will contain the parent child node relationships and actions to get there in the following format [(9,2)]:((9,1),(0,1)
+        meta = dict()
+
+        # initialize with the root value and have the parent and action as None,None
+        meta[start] = (None, None)
+        
+        #append the root (9,1) to the deque
+        queue.append(start)
+			
+		#iterate through the deque until it is empty	
+        while queue:
+        	
+            #pop most recently added node from the deque and assign it to the variable start
+            start = queue.popleft()
+            
+            # if the current node is the goal then call the construct_path function with current_node (as start), the goal and meta arguments
+            if start == goal:
+                return (self.construct_path(start, meta, goal))
+
+            #get successor function returns a list of the child nodes/ neighbouring nodes of the current node and the action to reach the child from parent i.e (9,2)(0,1)
+            for child, action in self.get_successor(start):
+            	
+					#if the child is already in the explored set ignore it 
+                if child in visited:
+                    continue
+               #if the child is not explored and the child is not in the queue to be explored do the follwoing      
+                elif (child not in queue) and (child not in wall_location):
+                	
+                	#add it to the meta dictionary with the parent (as start) and the action taken from the parent to reach it 
+                    meta[child] = (start, action)
+                    
+                    #append it to the queue list so that it will be passed to the bfs and explored
+                    queue.append(child)
+                    
+				#add the start node that has been explored (children found) to the visited set.
+            visited.add(start)
+
+            
+
+    def get_successor(self, my_location):
+    	#creates a list of children that includes the action taken from parent to reach each child.
+		        
+        
+        #takes the x and y from the location entered as the start of the bfs
+        x, y = my_location
+        
+        #creates empty children list to store the children 
+        children = []
+        
+        #creates a child in to the east of the location passed into the bfs as start argument
+        east = ((x + 1, y), (1, 0))
+        
+        #creates child to the west of start location 
+        west = ((x - 1, y), (-1, 0))
+        
+		  #creates child to the north of start location         
+        north = ((x, y + 1), (0, 1))
+        
+        #creates child to the south of start location
+        south = ((x, y - 1), (0, -1))
+        
+        #appends child to the empty children list
+        children.append(east)
+        
+        
+        children.append(west)
+        
+        children.append(north)
+        
+        children.append(south)
+        
+		  #function returns list of neighbouring nodes from the start node entered into the bfs alongside actions required to reach each child node
+        return children
+
+    def construct_path(self, node, meta, goal):
+    	#function constructs a path from the start coordinate (node argument) to the goal coordinate (goal argument) using the meta dictionary to construct a path
+        
+		#empty action list	        
+        action_list = []
+        
+		  #loop will execute until the root node is reached        
+        while (meta[node][0] != None):
+        	
+        		#assigns the node stored within a dictionary key to the node variable
+            node, action = meta[node]
+            
+            #appends the sequence of nodes returned to the action list
+            action_list.append(node)
+
+		  #reverses the action list so that it gives the path from start location to goal rather than the opposite
+        action_list.reverse()
+        
+        #appends the goal to the end of the action list
+        action_list = (action_list) + [goal]
+        
+	     #returns a list of coordinates which take pac-man agent from start of the path to the goal 
+        return action_list
+
+   
